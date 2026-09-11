@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 1820" role="img" aria-label="Sequence diagram: a user's chat message passes through auth, membership and credit checks, is saved, triggers a background moderation scan, loads brand and chat context, and is sent to Claude. If no Exa or Tavily key is configured Claude streams a true token-by-token reply. If a search key is configured, which is the default in this deployment, Claude instead returns one complete non-streaming response that is chopped into fake streaming chunks afterward, optionally calling Tavily or Exa for live search up to three times first. Either path ends with the reply saved to Firestore and delivered to the user as text or an interactive artifact card.">
+<style>text{font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;}.mono{font-family:ui-monospace,'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;}</style>
+<rect x="0" y="0" width="1480" height="1820" fill="#0a0d13"></rect>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a4658"></path>
+    </marker>
+    <marker id="a2r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#f16273"></path>
+    </marker>
+  </defs>
+
+  <g class="node">
+    <rect x="510" y="30" width="420" height="100" rx="12" fill="#10151d" stroke="#262f3d"></rect>
+    <text x="720" y="72" text-anchor="middle" font-size="16" font-weight="600" fill="#e9edf3">User sends a message</text>
+    <text x="720" y="98" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">POST /chats/{chatId}/messages</text>
+  </g>
+
+  <polyline points="720,130 720,210" fill="none" stroke="#3a4658" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+
+  <g class="node">
+    <rect x="460" y="210" width="520" height="110" rx="12" fill="#132235" stroke="#4f8fe0"></rect>
+    <text x="720" y="252" text-anchor="middle" font-size="16" font-weight="600" fill="#e9edf3">Auth + membership + credits deducted</text>
+    <text x="720" y="278" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">Firebase ID token verified (middleware/auth.py)</text>
+    <text x="720" y="296" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">Firestore transaction (credits_service.py)</text>
+  </g>
+
+  <polyline points="980,265 1220,265" fill="none" stroke="#f16273" stroke-width="1.75" marker-end="url(#a2r)"></polyline>
+  <rect x="1005" y="253" width="180" height="24" rx="12" fill="#2c151a" stroke="#f16273"></rect>
+  <text x="1095" y="269" text-anchor="middle" class="mono" font-size="10.4" fill="#f16273">insufficient balance</text>
+  <circle cx="1290" cy="265" r="70" fill="#2c151a" stroke="#f16273" stroke-width="2"></circle>
+  <text x="1290" y="260" text-anchor="middle" font-size="15" font-weight="600" fill="#e9edf3">402</text>
+  <text x="1290" y="279" text-anchor="middle" font-size="12" fill="#8b96a6">rejected</text>
+
+  <polyline points="720,320 720,400" fill="none" stroke="#3a4658" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+  <rect x="645" y="352" width="150" height="24" rx="12" fill="#141b25" stroke="#2b3547"></rect>
+  <text x="720" y="368" text-anchor="middle" class="mono" font-size="10.6" fill="#aeb8c6">sufficient balance</text>
+
+  <g class="node">
+    <rect x="510" y="400" width="420" height="90" rx="12" fill="#10151d" stroke="#262f3d"></rect>
+    <text x="720" y="438" text-anchor="middle" font-size="15.5" font-weight="600" fill="#e9edf3">Message saved to Firestore</text>
+    <text x="720" y="464" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">messages/{chatId}/{messageId}</text>
+  </g>
+
+  <polyline points="510,445 400,445" fill="none" stroke="#57626f" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#a2)"></polyline>
+  <g class="node">
+    <rect x="60" y="400" width="340" height="100" rx="12" fill="#0d1219" stroke="#1b2430" stroke-dasharray="7 5"></rect>
+    <text x="230" y="432" text-anchor="middle" font-size="14" font-weight="600" fill="#8b96a6">Moderation scan</text>
+    <text x="230" y="454" text-anchor="middle" class="mono" font-size="10.8" fill="#57626f">runs async, AFTER the message is</text>
+    <text x="230" y="470" text-anchor="middle" class="mono" font-size="10.8" fill="#57626f">already sent — never blocks</text>
+    <text x="230" y="488" text-anchor="middle" class="mono" font-size="10.8" fill="#57626f">moderation_service.py</text>
+  </g>
+
+  <polyline points="720,490 720,560" fill="none" stroke="#3a4658" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+
+  <g class="node">
+    <rect x="460" y="560" width="520" height="130" rx="12" fill="#0e2a27" stroke="#35d0c0"></rect>
+    <text x="720" y="600" text-anchor="middle" font-size="16" font-weight="600" fill="#e9edf3">Context loaded</text>
+    <text x="720" y="626" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">last 50 messages · brand memory (5-min cache)</text>
+    <text x="720" y="644" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">Brand Core · knowledge-base chunks (keyword match)</text>
+    <text x="720" y="666" text-anchor="middle" class="mono" font-size="10.8" fill="#57626f">all synchronous, before the reply starts streaming</text>
+  </g>
+
+  <polyline points="720,690 720,790" fill="none" stroke="#3a4658" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+
+  <g class="node">
+    <rect x="460" y="790" width="520" height="130" rx="12" fill="#1f1a35" stroke="#a78bfa"></rect>
+    <text x="720" y="830" text-anchor="middle" font-size="16.5" font-weight="600" fill="#e9edf3">Claude generates the reply</text>
+    <text x="720" y="856" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">llm_service.py</text>
+    <text x="720" y="874" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">Brand Core + history in the system prompt</text>
+    <text x="720" y="900" text-anchor="middle" class="mono" font-size="10.8" fill="#57626f">claude-sonnet-4-6 by default</text>
+  </g>
+
+  <polyline points="980,855 1020,855" fill="none" stroke="#57626f" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#a2)"></polyline>
+  <g class="node">
+    <rect x="1020" y="790" width="400" height="130" rx="12" fill="#0d1219" stroke="#1b2430" stroke-dasharray="7 5"></rect>
+    <text x="1220" y="820" text-anchor="middle" font-size="14" font-weight="600" fill="#8b96a6">Live status shown to the user</text>
+    <text x="1220" y="844" text-anchor="middle" class="mono" font-size="10.6" fill="#57626f">SSE: "Analyzing your request" →</text>
+    <text x="1220" y="860" text-anchor="middle" class="mono" font-size="10.6" fill="#57626f">"Loading brand context" → "Thinking"</text>
+    <text x="1220" y="880" text-anchor="middle" class="mono" font-size="10.6" fill="#57626f">sent before any real output exists</text>
+    <text x="1220" y="900" text-anchor="middle" class="mono" font-size="10.6" fill="#57626f">stream.py::send_message</text>
+  </g>
+
+  <!-- branch on tool keys -->
+  <polyline points="720,920 720,960 270,960 270,1020" fill="none" stroke="#4f8fe0" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+  <rect x="330" y="942" width="270" height="24" rx="12" fill="#141b25" stroke="#2b3547"></rect>
+  <text x="465" y="958" text-anchor="middle" class="mono" font-size="10.2" fill="#aeb8c6">no Exa/Tavily key configured</text>
+
+  <polyline points="720,920 720,960 1150,960 1150,1020" fill="none" stroke="#f16273" stroke-width="1.75" marker-end="url(#a2r)"></polyline>
+  <rect x="815" y="942" width="290" height="24" rx="12" fill="#2c151a" stroke="#f16273"></rect>
+  <text x="960" y="958" text-anchor="middle" class="mono" font-size="10.2" fill="#f16273">Exa/Tavily key set — default here</text>
+
+  <g class="node">
+    <rect x="80" y="1020" width="380" height="110" rx="12" fill="#10151d" stroke="#4f8fe0"></rect>
+    <text x="270" y="1058" text-anchor="middle" font-size="15" font-weight="600" fill="#e9edf3">True token-by-token stream</text>
+    <text x="270" y="1084" text-anchor="middle" class="mono" font-size="11" fill="#8b96a6">stream_chat() — real Claude SSE</text>
+    <text x="270" y="1100" text-anchor="middle" class="mono" font-size="11" fill="#8b96a6">deltas, live, as they're generated</text>
+  </g>
+
+  <g class="node">
+    <rect x="940" y="1020" width="420" height="110" rx="12" fill="#2c151a" stroke="#f16273"></rect>
+    <text x="1150" y="1054" text-anchor="middle" font-size="15" font-weight="600" fill="#e9edf3">Blocking call, faked afterward</text>
+    <text x="1150" y="1078" text-anchor="middle" class="mono" font-size="10.6" fill="#8b96a6">stream_chat_with_tools() — full reply generated</text>
+    <text x="1150" y="1094" text-anchor="middle" class="mono" font-size="10.6" fill="#8b96a6">first, then chopped into ~40-char fake "deltas"</text>
+  </g>
+
+  <polyline points="1150,1130 1150,1230" fill="none" stroke="#e3a83b" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+  <rect x="1015" y="1162" width="270" height="24" rx="12" fill="#141b25" stroke="#2b3547"></rect>
+  <text x="1150" y="1178" text-anchor="middle" class="mono" font-size="10.2" fill="#aeb8c6">if Claude requests a tool</text>
+
+  <g class="node">
+    <rect x="940" y="1230" width="420" height="120" rx="12" fill="#2b2414" stroke="#e3a83b"></rect>
+    <text x="1150" y="1266" text-anchor="middle" font-size="15" font-weight="600" fill="#e9edf3">Web search: Tavily / Exa</text>
+    <text x="1150" y="1290" text-anchor="middle" class="mono" font-size="10.6" fill="#8b96a6">general/news → Tavily first · company → Exa first</text>
+    <text x="1150" y="1306" text-anchor="middle" class="mono" font-size="10.6" fill="#8b96a6">each falls back to the other on failure</text>
+    <text x="1150" y="1328" text-anchor="middle" class="mono" font-size="10.2" fill="#57626f">tool_dispatcher.py</text>
+  </g>
+
+  <!-- loop back -->
+  <polyline points="1360,1290 1440,1290 1440,975 1250,975 1250,1020" fill="none" stroke="#e3a83b" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+  <rect x="1255" y="963" width="180" height="24" rx="12" fill="#141b25" stroke="#2b3547"></rect>
+  <text x="1345" y="979" text-anchor="middle" class="mono" font-size="10" fill="#aeb8c6">fed back · up to 3 rounds</text>
+
+  <!-- done path around the search node -->
+  <polyline points="940,1075 860,1075 860,1360 790,1360 790,1400" fill="none" stroke="#3a4658" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+  <rect x="790" y="1288" width="140" height="24" rx="12" fill="#141b25" stroke="#2b3547"></rect>
+  <text x="860" y="1304" text-anchor="middle" class="mono" font-size="10" fill="#aeb8c6">final text ready</text>
+
+  <polyline points="270,1130 270,1360 650,1360 650,1400" fill="none" stroke="#3a4658" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+  <rect x="200" y="1288" width="140" height="24" rx="12" fill="#141b25" stroke="#2b3547"></rect>
+  <text x="270" y="1304" text-anchor="middle" class="mono" font-size="10" fill="#aeb8c6">reply ready</text>
+
+  <g class="node">
+    <rect x="480" y="1400" width="480" height="110" rx="12" fill="#10151d" stroke="#262f3d"></rect>
+    <text x="720" y="1440" text-anchor="middle" font-size="16" font-weight="600" fill="#e9edf3">Reply assembled + saved</text>
+    <text x="720" y="1466" text-anchor="middle" class="mono" font-size="11.5" fill="#8b96a6">messages/{id} · billing_service increments count</text>
+  </g>
+
+  <polyline points="720,1510 720,1555" fill="none" stroke="#3ddc9b" stroke-width="1.75" marker-end="url(#a2)"></polyline>
+
+  <circle cx="720" cy="1650" r="95" fill="#0e2a22" stroke="#3ddc9b" stroke-width="2"></circle>
+  <text x="720" y="1644" text-anchor="middle" font-size="17" font-weight="600" fill="#e9edf3">Delivered</text>
+  <text x="720" y="1666" text-anchor="middle" font-size="14" fill="#8b96a6">to user</text>
+
+  <text x="720" y="1775" text-anchor="middle" class="mono" font-size="12" fill="#57626f">rendered as markdown, or an interactive &lt;artifact&gt; card</text>
+</svg>

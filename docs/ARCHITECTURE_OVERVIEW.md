@@ -18,6 +18,11 @@ From then on, every time you chat with Leo — "write me 3 Instagram captions," 
 
 **What actually happens, step by step:**
 
+<img src="diagrams/brand-core-flow.svg" alt="Flow diagram of how Brand Core gets built: website, social handles, or a manual edit feed ingestion; Firecrawl, Apify, and optional Exa scrape each source; Gemini 2.5-flash extracts a structured Brand Core; a failed JSON parse still saves an empty skeleton marked complete; both paths land in the same Firestore field, which then feeds every future chat message." width="100%">
+
+<details>
+<summary>Text/mermaid version of the same diagram (for viewers that can't load the image above)</summary>
+
 ```mermaid
 flowchart TD
     U["User enters website URL / social links\n(frontend: ingestion-overlay.tsx)"] --> R["POST /projects/{id}/ingest\n(backend/api/routes/ingestion.py)"]
@@ -46,6 +51,8 @@ flowchart TD
     FAIL1 -.-> DONE
 ```
 
+</details>
+
 Progress is streamed live to the browser the whole time (an SSE / Server-Sent Events connection — a one-way live feed from server to browser, like a sports score ticker) so the user sees each step ("Scraping website…", "Detecting colour palette…") rather than a blank loading spinner (`backend/api/routes/ingestion.py`, consumed by `frontend/src/components/brand-core/ingestion-overlay.tsx`).
 
 **Where it's stored:** the whole Brand Core is one JSON blob nested inside the project's Firestore document (`projects/{projectId}` → field `brandCore`) — it is not a separate collection or table. There is no version history; every re-ingestion overwrites the previous Brand Core outright.
@@ -55,6 +62,11 @@ Progress is streamed live to the browser the whole time (an SSE / Server-Sent Ev
 ## 3. How a chat request gets handled
 
 This is the main "conversation" surface — the screen where a user actually talks to Leo (`frontend/src/app/projects/[projectId]/chats/[chatId]/page.tsx` → `backend/api/routes/stream.py::send_message`). A **synchronous** step below means the user's browser is waiting on it before anything streams back; **async/background** means it happens without blocking the reply.
+
+<img src="diagrams/chat-flow.svg" alt="Flow diagram of how a chat message is handled: auth, membership, and credits are checked; the message is saved and a moderation scan runs in the background; context is loaded from Firestore; Claude is called. If no Exa or Tavily key is configured the reply streams token by token. If a search key is configured, the default here, Claude instead returns one full response that is chopped into fake streaming chunks afterward, optionally calling Tavily or Exa first. Either path ends with the reply saved and delivered to the user." width="100%">
+
+<details>
+<summary>Text/mermaid version of the same diagram (for viewers that can't load the image above)</summary>
 
 ```mermaid
 sequenceDiagram
@@ -102,6 +114,8 @@ sequenceDiagram
     API->>DB: save full assistant reply (sync, after stream ends)
     API->>DB: increment user's message count for billing (sync)
 ```
+
+</details>
 
 If the message contains structured content (captions, ad copy, a campaign brief, etc.), Claude is instructed to wrap it in a special `<artifact type="...">…</artifact>` block, which the frontend detects and renders as an interactive card instead of plain text (`backend/services/llm_service.py::ARTIFACT_INSTRUCTIONS`, rendered by `frontend/src/components/chat/artifact-cards.tsx`).
 
