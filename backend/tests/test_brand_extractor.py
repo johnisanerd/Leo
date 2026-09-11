@@ -102,7 +102,7 @@ class TestBuildCombinedContent:
         assert "\n\n" in result
 
     def test_unknown_source_type_skipped(self):
-        sources = [{"source_type": "tiktok", "data": "something"}]
+        sources = [{"source_type": "carrier_pigeon", "data": "something"}]
         result = _build_combined_content(sources)
         # Unknown source types produce no output sections.
         assert result == ""
@@ -125,7 +125,7 @@ class TestBuildCombinedContent:
 
 
 # ---------------------------------------------------------------------------
-# extract_brand_core (integration - mocked Anthropic client)
+# extract_brand_core (integration - mocked Gemini client)
 # ---------------------------------------------------------------------------
 
 VALID_BRAND_CORE_JSON = json.dumps({
@@ -139,16 +139,21 @@ VALID_BRAND_CORE_JSON = json.dumps({
 })
 
 
+def _mock_gemini_client(response_text: str) -> MagicMock:
+    mock_response = MagicMock()
+    mock_response.text = response_text
+
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+    return mock_client
+
+
 @pytest.mark.asyncio
 async def test_extract_brand_core_success():
     """extract_brand_core should call the LLM and return a parsed dict."""
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=VALID_BRAND_CORE_JSON)]
+    mock_client = _mock_gemini_client(VALID_BRAND_CORE_JSON)
 
-    mock_client = AsyncMock()
-    mock_client.messages.create = AsyncMock(return_value=mock_message)
-
-    with patch("backend.services.ingestion.brand_extractor.get_client", return_value=mock_client):
+    with patch("backend.services.ingestion.brand_extractor.get_gemini_client", return_value=mock_client):
         result = await extract_brand_core(
             scraped_data=[{
                 "source_type": "website",
@@ -162,19 +167,15 @@ async def test_extract_brand_core_success():
 
     assert result["tagline"] == "Better every day"
     assert result["tone"]["style"] == "friendly"
-    mock_client.messages.create.assert_called_once()
+    mock_client.aio.models.generate_content.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_extract_brand_core_bad_json_returns_skeleton():
-    """If Claude returns invalid JSON, extract_brand_core must return a skeleton (not raise)."""
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text="Sorry, I cannot help with that.")]
+    """If Gemini returns invalid JSON, extract_brand_core must return a skeleton (not raise)."""
+    mock_client = _mock_gemini_client("Sorry, I cannot help with that.")
 
-    mock_client = AsyncMock()
-    mock_client.messages.create = AsyncMock(return_value=mock_message)
-
-    with patch("backend.services.ingestion.brand_extractor.get_client", return_value=mock_client):
+    with patch("backend.services.ingestion.brand_extractor.get_gemini_client", return_value=mock_client):
         result = await extract_brand_core(scraped_data=[], api_key="test-key")
 
     # Must not raise; must return the minimal skeleton.
@@ -185,11 +186,7 @@ async def test_extract_brand_core_bad_json_returns_skeleton():
 @pytest.mark.asyncio
 async def test_extract_brand_core_truncates_content():
     """Content exceeding _MAX_CONTENT_CHARS should be truncated before sending."""
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=VALID_BRAND_CORE_JSON)]
-
-    mock_client = AsyncMock()
-    mock_client.messages.create = AsyncMock(return_value=mock_message)
+    mock_client = _mock_gemini_client(VALID_BRAND_CORE_JSON)
 
     huge_markdown = "a" * (_MAX_CONTENT_CHARS * 3)
     scraped = [{
@@ -200,10 +197,10 @@ async def test_extract_brand_core_truncates_content():
         "markdown": huge_markdown,
     }]
 
-    with patch("backend.services.ingestion.brand_extractor.get_client", return_value=mock_client):
+    with patch("backend.services.ingestion.brand_extractor.get_gemini_client", return_value=mock_client):
         await extract_brand_core(scraped_data=scraped, api_key="test-key")
 
     # Verify the content sent to the LLM was capped.
-    call_args = mock_client.messages.create.call_args
-    user_content = call_args.kwargs["messages"][0]["content"]
+    call_args = mock_client.aio.models.generate_content.call_args
+    user_content = call_args.kwargs["contents"]
     assert len(user_content) <= _MAX_CONTENT_CHARS + 100  # small slack for the prefix string

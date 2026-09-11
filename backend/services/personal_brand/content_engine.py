@@ -795,5 +795,3 @@ async def write_article(
     except Exception as exc:
         logger.exception("Article writer failed for project %s", project_id)
         yield _sse("error", {"message": str(exc)})
-
-    return {"saved": True, "approvedAt": now}

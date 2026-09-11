@@ -18,8 +18,7 @@ from typing import Any, Optional
 import httpx
 from google.cloud import firestore
 
-from config import settings
-from services.firebase import db
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +59,9 @@ async def get_or_create_profile(project_id: str) -> dict[str, Any]:
     Returns the Ayrshare profile for this project.
     Creates one if it doesn't exist yet, persisting the profileKey to Firestore.
     """
+    from backend.services import firebase_service
+    db = firebase_service.get_db()
+
     doc_ref = db.collection("personal_publishing_profiles").document(project_id)
     doc = await asyncio.to_thread(doc_ref.get)
     if doc.exists:
@@ -86,6 +88,9 @@ async def get_or_create_profile(project_id: str) -> dict[str, Any]:
 
 
 async def get_profile(project_id: str) -> Optional[dict[str, Any]]:
+    from backend.services import firebase_service
+    db = firebase_service.get_db()
+
     doc = await asyncio.to_thread(
         db.collection("personal_publishing_profiles").document(project_id).get
     )
@@ -152,6 +157,9 @@ async def get_connected_platforms(project_id: str) -> list[dict[str, Any]]:
             )
 
     # Refresh cache
+    from backend.services import firebase_service
+    db = firebase_service.get_db()
+
     await asyncio.to_thread(
         db.collection("personal_publishing_profiles")
         .document(project_id)
@@ -286,6 +294,9 @@ async def _save_post_to_history(
     scheduled_at: Optional[str],
 ) -> None:
     try:
+        from backend.services import firebase_service
+        db = firebase_service.get_db()
+
         history_ref = db.collection("personal_publishing_history").document()
         record = {
             "projectId": project_id,

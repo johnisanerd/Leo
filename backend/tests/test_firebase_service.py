@@ -133,16 +133,20 @@ class TestListProjects:
 
 class TestListMessages:
     def test_sorted_chronologically(self, mock_db):
+        # Firestore's order_by(..., DESCENDING) returns newest first; list_messages
+        # then reverses to chronological order, so the fixture must already be
+        # in descending createdAt order to simulate a real query result.
         docs = [
             _make_doc("m3", {"role": "assistant", "content": "C", "createdAt": "2024-01-01T10:02:00+00:00"}),
-            _make_doc("m1", {"role": "user",      "content": "A", "createdAt": "2024-01-01T10:00:00+00:00"}),
             _make_doc("m2", {"role": "user",      "content": "B", "createdAt": "2024-01-01T10:01:00+00:00"}),
+            _make_doc("m1", {"role": "user",      "content": "A", "createdAt": "2024-01-01T10:00:00+00:00"}),
         ]
         (mock_db.collection.return_value
              .document.return_value
              .collection.return_value
              .document.return_value
              .collection.return_value
+             .order_by.return_value
              .limit.return_value
              .stream.return_value) = docs
 
